@@ -1,0 +1,478 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+/**
+ * @title EthiopianMicrofinanceSimple
+ * @dev Simplified microfinance system for Sepolia deployment
+ * Inspired by Ethiopian iqub/idir systems
+ */
+contract EthiopianMicrofinanceSimple {
+    // Loan status enum
+    enum LoanStatus { Requested, Active, Repaying, Completed, Defaulted, Cancelled }
+    
+    // User struct
+    struct User {
+        uint256 creditScore;
+        uint256 totalBorrowed;
+        uint256 totalRepaid;
+        uint256 activeLoans;
+        uint256 completedLoans;
+        uint256 defaultedLoans;
+        bool isRegistered;
+        uint256 lastActivity;
+    }
+    
+    // Loan struct
+    struct Loan {
+        uint256 id;
+        address borrower;
+        uint256 amount;
+        uint256 interestRate;
+        uint256 duration;
+        uint256 startTime;
+        uint256 endTime;
+        uint256 amountRepaid;
+        uint256 totalOwed;
+        LoanStatus status;
+        string purpose;
+        uint256 created;
+    }
+    
+    // State variables
+    address public owner;
+    uint256 public totalPoolBalance;
+    uint256 public totalActiveLoans;
+    uint256 public totalRepaidAmount;
+    uint256 public nextLoanId;
+    bool public paused;
+    
+    // Constants
+    uint256 public constant MIN_DEPOSIT = 0.001 ether;
+    uint256 public constant MAX_DEPOSIT = 100 ether;
+    uint256 public constant MIN_LOAN = 0.005 ether;
+    uint256 public constant MAX_LOAN = 10 ether;
+    uint256 public constant BASE_INTEREST_RATE = 500; // 5% annual (basis points)
+    uint256 public constant GRACE_PERIOD = 7 days;
+    uint256 public constant MAX_ACTIVE_LOANS_PER_USER = 2;
+    uint256 public constant INITIAL_CREDIT_SCORE = 500;
+    uint256 public constant MAX_CREDIT_SCORE = 1000;
+    
+    // Mappings
+    mapping(address => User) public users;
+    mapping(uint256 => Loan) public loans;
+    mapping(address => uint256[]) public userLoans;
+    mapping(address => uint256) public userDeposits;
+    
+    // Events
+    event UserRegistered(address indexed user, uint256 timestamp);
+    event Deposited(address indexed user, uint256 amount, uint256 timestamp);
+    event Withdrawn(address indexed user, uint256 amount, uint256 timestamp);
+    event LoanRequested(uint256 indexed loanId, address indexed borrower, uint256 amount, string purpose);
+    event LoanApproved(uint256 indexed loanId, uint256 amount);
+    event LoanActive(uint256 indexed loanId, uint256 startTime);
+    event RepaymentMade(uint256 indexed loanId, address indexed borrower, uint256 amount);
+    event LoanCompleted(uint256 indexed loanId, uint256 totalRepaid);
+    event LoanDefaulted(uint256 indexed loanId);
+    event CreditScoreUpdated(address indexed user, uint256 oldScore, uint256 newScore);
+    event PoolStatsUpdated(uint256 totalBalance, uint256 activeLoans, uint256 timestamp);
+    
+    // Modifiers
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
+    
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
+        _;
+    }
+    
+    modifier nonReentrant() {
+        require(!locked, "Reentrant call");
+        locked = true;
+        _;
+        locked = false;
+    }
+    
+    bool private locked;
+    
+    constructor() {
+        owner = msg.sender;
+        // Register deployer
+        users[msg.sender] = User({
+            creditScore: INITIAL_CREDIT_SCORE,
+            totalBorrowed: 0,
+            totalRepaid: 0,
+            activeLoans: 0,
+            completedLoans: 0,
+            defaultedLoans: 0,
+            isRegistered: true,
+            lastActivity: block.timestamp
+        });
+        emit UserRegistered(msg.sender, block.timestamp);
+    }
+    
+    /**
+     * @dev Register new user
+     */
+    function register() external whenNotPaused {
+        require(!users[msg.sender].isRegistered, "User already registered");
+        
+        users[msg.sender] = User({
+            creditScore: INITIAL_CREDIT_SCORE,
+            totalBorrowed: 0,
+            totalRepaid: 0,
+            activeLoans: 0,
+            completedLoans: 0,
+            defaultedLoans: 0,
+            isRegistered: true,
+            lastActivity: block.timestamp
+        });
+        
+        emit UserRegistered(msg.sender, block.timestamp);
+    }
+    
+    /**
+     * @dev Deposit funds
+     */
+    function deposit() external payable whenNotPaused nonReentrant {
+        require(users[msg.sender].isRegistered, "User not registered");
+        require(msg.value >= MIN_DEPOSIT, "Below minimum deposit");
+        require(msg.value <= MAX_DEPOSIT, "Above maximum deposit");
+        
+        userDeposits[msg.sender] += msg.value;
+        totalPoolBalance += msg.value;
+        users[msg.sender].lastActivity = block.timestamp;
+        
+        emit Deposited(msg.sender, msg.value, block.timestamp);
+        emit PoolStatsUpdated(totalPoolBalance, totalActiveLoans, block.timestamp);
+    }
+    
+    /**
+     * @dev Withdraw funds
+     */
+    function withdraw(uint256 amount) external whenNotPaused nonReentrant {
+        require(users[msg.sender].isRegistered, "User not registered");
+        require(userDeposits[msg.sender] >= amount, "Insufficient deposit balance");
+        require(amount <= getAvailableLiquidity(), "Insufficient pool liquidity");
+        
+        userDeposits[msg.sender] -= amount;
+        totalPoolBalance -= amount;
+        users[msg.sender].lastActivity = block.timestamp;
+        
+        payable(msg.sender).transfer(amount);
+        
+        emit Withdrawn(msg.sender, amount, block.timestamp);
+        emit PoolStatsUpdated(totalPoolBalance, totalActiveLoans, block.timestamp);
+    }
+    
+    /**
+     * @dev Request a loan
+     */
+    function requestLoan(uint256 amount, uint256 duration, string memory purpose) external whenNotPaused nonReentrant returns (uint256) {
+        require(users[msg.sender].isRegistered, "User not registered");
+        require(amount >= MIN_LOAN && amount <= MAX_LOAN, "Invalid loan amount");
+        require(duration >= 30 days && duration <= 180 days, "Invalid duration");
+        require(users[msg.sender].activeLoans < MAX_ACTIVE_LOANS_PER_USER, "Too many active loans");
+        require(amount <= getMaxLoanAmount(msg.sender), "Amount exceeds credit limit");
+        require(amount <= getAvailableLiquidity(), "Insufficient pool liquidity");
+        
+        uint256 loanId = nextLoanId++;
+        uint256 interestAmount = (amount * BASE_INTEREST_RATE * duration) / (365 days * 10000);
+        uint256 totalOwed = amount + interestAmount;
+        
+        loans[loanId] = Loan({
+            id: loanId,
+            borrower: msg.sender,
+            amount: amount,
+            interestRate: BASE_INTEREST_RATE,
+            duration: duration,
+            startTime: 0,
+            endTime: 0,
+            amountRepaid: 0,
+            totalOwed: totalOwed,
+            status: LoanStatus.Requested,
+            purpose: purpose,
+            created: block.timestamp
+        });
+        
+        userLoans[msg.sender].push(loanId);
+        users[msg.sender].lastActivity = block.timestamp;
+        
+        emit LoanRequested(loanId, msg.sender, amount, purpose);
+        return loanId;
+    }
+    
+    /**
+     * @dev Approve loan
+     */
+    function approveLoan(uint256 loanId) external onlyOwner nonReentrant {
+        require(loans[loanId].status == LoanStatus.Requested, "Invalid loan status");
+        require(getAvailableLiquidity() >= loans[loanId].amount, "Insufficient liquidity");
+        
+        Loan storage loan = loans[loanId];
+        loan.status = LoanStatus.Active;
+        loan.startTime = block.timestamp;
+        loan.endTime = block.timestamp + loan.duration;
+        
+        address borrower = loan.borrower;
+        users[borrower].totalBorrowed += loan.amount;
+        users[borrower].activeLoans += 1;
+        users[borrower].lastActivity = block.timestamp;
+        
+        totalActiveLoans += 1;
+        totalPoolBalance -= loan.amount;
+        
+        payable(borrower).transfer(loan.amount);
+        
+        emit LoanApproved(loanId, loan.amount);
+        emit LoanActive(loanId, loan.startTime);
+        emit PoolStatsUpdated(totalPoolBalance, totalActiveLoans, block.timestamp);
+    }
+    
+    /**
+     * @dev Repay loan
+     */
+    function repayLoan(uint256 loanId) external payable whenNotPaused nonReentrant {
+        require(loans[loanId].status == LoanStatus.Active || loans[loanId].status == LoanStatus.Repaying, "Invalid loan status");
+        require(loans[loanId].borrower == msg.sender, "Not loan borrower");
+        require(msg.value > 0, "No payment amount");
+        
+        Loan storage loan = loans[loanId];
+        uint256 remainingBalance = loan.totalOwed - loan.amountRepaid;
+        require(msg.value <= remainingBalance, "Payment exceeds balance");
+        
+        loan.amountRepaid += msg.value;
+        totalRepaidAmount += msg.value;
+        totalPoolBalance += msg.value;
+        
+        users[msg.sender].totalRepaid += msg.value;
+        users[msg.sender].lastActivity = block.timestamp;
+        
+        if (loan.status == LoanStatus.Active) {
+            loan.status = LoanStatus.Repaying;
+        }
+        
+        emit RepaymentMade(loanId, msg.sender, msg.value);
+        
+        // Check if loan is fully repaid
+        if (loan.amountRepaid >= loan.totalOwed) {
+            _completeLoan(loanId);
+        }
+        
+        emit PoolStatsUpdated(totalPoolBalance, totalActiveLoans, block.timestamp);
+    }
+    
+    /**
+     * @dev Complete loan
+     */
+    function _completeLoan(uint256 loanId) internal {
+        Loan storage loan = loans[loanId];
+        loan.status = LoanStatus.Completed;
+        
+        address borrower = loan.borrower;
+        users[borrower].activeLoans -= 1;
+        users[borrower].completedLoans += 1;
+        
+        totalActiveLoans -= 1;
+        
+        // Update credit score
+        _updateCreditScore(borrower, true);
+        
+        emit LoanCompleted(loanId, loan.amountRepaid);
+    }
+    
+    /**
+     * @dev Check default
+     */
+    function checkDefault(uint256 loanId) external {
+        require(loans[loanId].status == LoanStatus.Active || loans[loanId].status == LoanStatus.Repaying, "Invalid loan status");
+        require(block.timestamp > loans[loanId].endTime + GRACE_PERIOD, "Grace period not over");
+        require(loans[loanId].amountRepaid < loans[loanId].totalOwed, "Loan already repaid");
+        
+        Loan storage loan = loans[loanId];
+        loan.status = LoanStatus.Defaulted;
+        
+        address borrower = loan.borrower;
+        users[borrower].activeLoans -= 1;
+        users[borrower].defaultedLoans += 1;
+        
+        totalActiveLoans -= 1;
+        
+        _updateCreditScore(borrower, false);
+        
+        emit LoanDefaulted(loanId);
+    }
+    
+    /**
+     * @dev Update credit score
+     */
+    function _updateCreditScore(address user, bool successfulRepayment) internal {
+        User storage userStruct = users[user];
+        uint256 oldScore = userStruct.creditScore;
+        uint256 newScore = oldScore;
+        
+        if (successfulRepayment) {
+            uint256 increase = 50;
+            if (userStruct.completedLoans > 0) {
+                increase += userStruct.completedLoans * 10;
+            }
+            newScore = oldScore + increase;
+        } else {
+            newScore = oldScore - 100;
+        }
+        
+        if (newScore > MAX_CREDIT_SCORE) {
+            newScore = MAX_CREDIT_SCORE;
+        }
+        if (newScore < 100) {
+            newScore = 100;
+        }
+        
+        userStruct.creditScore = newScore;
+        
+        emit CreditScoreUpdated(user, oldScore, newScore);
+    }
+    
+    /**
+     * @dev Get max loan amount
+     */
+    function getMaxLoanAmount(address user) public view returns (uint256) {
+        uint256 creditScore = users[user].creditScore;
+        uint256 baseAmount = MIN_LOAN;
+        
+        if (creditScore >= 800) {
+            return MAX_LOAN;
+        } else if (creditScore >= 600) {
+            return baseAmount * 20;
+        } else if (creditScore >= 400) {
+            return baseAmount * 10;
+        } else if (creditScore >= 200) {
+            return baseAmount * 5;
+        } else {
+            return baseAmount;
+        }
+    }
+    
+    /**
+     * @dev Get available liquidity
+     */
+    function getAvailableLiquidity() public view returns (uint256) {
+        return totalPoolBalance;
+    }
+    
+    /**
+     * @dev Get user loans
+     */
+    function getUserLoans(address user) external view returns (uint256[] memory) {
+        return userLoans[user];
+    }
+    
+    /**
+     * @dev Get loan details
+     */
+    function getLoanDetails(uint256 loanId) external view returns (
+        address borrower,
+        uint256 amount,
+        uint256 interestRate,
+        uint256 duration,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 amountRepaid,
+        uint256 totalOwed,
+        LoanStatus status,
+        string memory purpose,
+        uint256 created
+    ) {
+        Loan memory loan = loans[loanId];
+        return (
+            loan.borrower,
+            loan.amount,
+            loan.interestRate,
+            loan.duration,
+            loan.startTime,
+            loan.endTime,
+            loan.amountRepaid,
+            loan.totalOwed,
+            loan.status,
+            loan.purpose,
+            loan.created
+        );
+    }
+    
+    /**
+     * @dev Get user stats
+     */
+    function getUserStats(address user) external view returns (
+        uint256 creditScore,
+        uint256 totalBorrowed,
+        uint256 totalRepaid,
+        uint256 activeLoans,
+        uint256 completedLoans,
+        uint256 defaultedLoans,
+        uint256 depositBalance,
+        uint256 maxLoanAmount
+    ) {
+        User memory userStruct = users[user];
+        return (
+            userStruct.creditScore,
+            userStruct.totalBorrowed,
+            userStruct.totalRepaid,
+            userStruct.activeLoans,
+            userStruct.completedLoans,
+            userStruct.defaultedLoans,
+            userDeposits[user],
+            getMaxLoanAmount(user)
+        );
+    }
+    
+    /**
+     * @dev Get system stats
+     */
+    function getSystemStats() external view returns (
+        uint256 totalBalance,
+        uint256 activeLoans,
+        uint256 totalRepaid,
+        uint256 totalUsers
+    ) {
+        return (
+            totalPoolBalance,
+            totalActiveLoans,
+            totalRepaidAmount,
+            0 // TODO: Add user counter
+        );
+    }
+    
+    /**
+     * @dev Pause contract
+     */
+    function pause() external onlyOwner {
+        paused = true;
+    }
+    
+    /**
+     * @dev Unpause contract
+     */
+    function unpause() external onlyOwner {
+        paused = false;
+    }
+    
+        
+    /**
+     * @dev Receive function
+     */
+    receive() external payable {
+        userDeposits[msg.sender] += msg.value;
+        totalPoolBalance += msg.value;
+        emit Deposited(msg.sender, msg.value, block.timestamp);
+    }
+    
+    /**
+     * @dev Fallback function
+     */
+    fallback() external payable {
+        userDeposits[msg.sender] += msg.value;
+        totalPoolBalance += msg.value;
+        emit Deposited(msg.sender, msg.value, block.timestamp);
+    }
+}
