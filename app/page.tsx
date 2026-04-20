@@ -4,250 +4,219 @@ import { useEffect, useState } from 'react'
 import { useWallet } from '@/components/WalletProvider'
 import { useContract } from '@/components/ContractProvider'
 import Link from 'next/link'
-import { ArrowRightIcon, BanknotesIcon, ShieldCheckIcon, UsersIcon } from '@heroicons/react/24/outline'
+import { 
+  BanknotesIcon, 
+  ArrowTrendingUpIcon, 
+  CreditCardIcon, 
+  UserCircleIcon,
+  PlusIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon
+} from '@heroicons/react/24/outline'
 
 export default function HomePage() {
-  const { isConnected, connectWallet, account } = useWallet()
-  const { getSystemStats } = useContract()
+  const { account, connectWallet } = useWallet()
+  const { getUserStats, getSystemStats, isLoading } = useContract()
+  const [userStats, setUserStats] = useState<any>(null)
   const [systemStats, setSystemStats] = useState<any>(null)
 
   useEffect(() => {
-    if (isConnected) {
-      loadSystemStats()
+    if (account) {
+      loadData()
     }
-  }, [isConnected])
+  }, [account, getUserStats, getSystemStats])
 
-  const loadSystemStats = async () => {
-    try {
-      const stats = await getSystemStats()
-      if (stats) {
-        setSystemStats(stats)
-      }
-    } catch (error) {
-      console.error("Error loading system stats:", error)
-    }
+  const loadData = async () => {
+    const [user, system] = await Promise.all([
+      getUserStats(),
+      getSystemStats()
+    ])
+    setUserStats(user)
+    setSystemStats(system)
+  }
+
+  if (!account) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <button
+            onClick={() => connectWallet()}
+            className="bg-gray-900 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-800 transition-all transform hover:scale-105 shadow-xl"
+          >
+            Connect Wallet
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div>
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-green-600 via-yellow-500 to-red-600">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-              Ethiopian Microfinance
-              <span className="block text-3xl md:text-4xl mt-2 text-yellow-300">
-                Decentralized lending for all
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto">
-              Inspired by traditional Ethiopian iqub and idir systems, built on blockchain for transparency and trust.
-              Access micro-loans, build credit history, and participate in community finance.
+    <div className="min-h-screen bg-gray-50 py-2 sm:py-4">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 mb-3 sm:mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-base sm:text-lg font-semibold text-gray-900">Dashboard</h1>
+            <p className="text-xs text-gray-500">
+              {account?.slice(0, 6)}...{account?.slice(-4)}
             </p>
-            
-            {!isConnected ? (
-              <button
-                onClick={() => connectWallet()}
-                className="bg-white text-green-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-100 transition-all transform hover:scale-105 shadow-xl"
-              >
-                Connect Wallet to Get Started
-                <ArrowRightIcon className="inline-block w-5 h-5 ml-2" />
-              </button>
-            ) : (
-              <div className="flex flex-col items-center space-y-4">
-                <p className="text-white text-lg">
-                  Connected as: <span className="text-yellow-300 font-mono">{account?.slice(0, 6)}...{account?.slice(-4)}</span>
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Link
-                    href="/dashboard"
-                    className="bg-yellow-400 text-green-800 px-12 py-4 rounded-lg font-bold text-xl hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-xl"
-                  >
-                    Go to Dashboard
-                  </Link>
-                  <button
-                    onClick={() => connectWallet(true)}
-                    className="bg-white/20 backdrop-blur-sm text-white border border-white/40 px-8 py-4 rounded-lg font-bold text-lg hover:bg-white/30 transition-all transform hover:scale-105 shadow-xl"
-                  >
-                    Change Wallet
-                  </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+        {/* User Stats */}
+        {userStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="bg-white rounded-lg shadow p-2 sm:p-3">
+              <div className="flex items-center">
+                <div className="p-1.5 bg-green-100 rounded-lg">
+                  <CreditCardIcon className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                </div>
+                <div className="ml-2">
+                  <p className="text-xs text-gray-500">Credit Score</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900">{userStats.creditScore}</p>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </div>
 
-      {/* System Stats */}
-      {systemStats && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-500">
-              <div className="text-green-600 text-3xl font-bold">{systemStats.totalBalance} ETH</div>
-              <div className="text-gray-600 mt-2">Total Pool Balance</div>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-yellow-500">
-              <div className="text-yellow-600 text-3xl font-bold">{systemStats.activeLoans}</div>
-              <div className="text-gray-600 mt-2">Active Loans</div>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-red-500">
-              <div className="text-red-600 text-3xl font-bold">{systemStats.totalRepaid} ETH</div>
-              <div className="text-gray-600 mt-2">Total Repaid</div>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-500">
-              <div className="text-blue-600 text-3xl font-bold">{systemStats.totalUsers}</div>
-              <div className="text-gray-600 mt-2">Total Users</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Features Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            How It Works
-          </h2>
-          <p className="text-xl text-gray-600">
-            Simple, transparent, and community-focused financial services
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-            <div className="bg-green-100 rounded-full p-4 w-16 h-16 mx-auto mb-6">
-              <BanknotesIcon className="w-8 h-8 text-green-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
-              Deposit & Lend
-            </h3>
-            <p className="text-gray-600 text-center">
-              Deposit ETH into the community lending pool and earn interest as borrowers repay their loans.
-              Your funds help others grow their businesses and improve their lives.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-            <div className="bg-yellow-100 rounded-full p-4 w-16 h-16 mx-auto mb-6">
-              <UsersIcon className="w-8 h-8 text-yellow-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
-              Borrow & Build Credit
-            </h3>
-            <p className="text-gray-600 text-center">
-              Request micro-loans for your business or personal needs. Build your credit score through
-              timely repayments and unlock larger loan amounts.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-            <div className="bg-red-100 rounded-full p-4 w-16 h-16 mx-auto mb-6">
-              <ShieldCheckIcon className="w-8 h-8 text-red-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
-              Transparent & Secure
-            </h3>
-            <p className="text-gray-600 text-center">
-              All transactions are recorded on the blockchain. No hidden fees, no intermediaries.
-              Smart contracts ensure fairness and automatic execution.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Ethiopian Context Section */}
-      <div className="bg-gradient-to-r from-green-50 to-yellow-50 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                Inspired by Ethiopian Traditions
-              </h2>
-              <div className="space-y-4 text-lg text-gray-700">
-                <p>
-                  <strong>Iqub:</strong> Traditional rotating savings associations where community members
-                  pool money and take turns receiving loans.
-                </p>
-                <p>
-                  <strong>Idir:</strong> Community-based insurance systems that provide support during
-                  difficult times.
-                </p>
-                <p>
-                  Our DApp modernizes these trusted systems using blockchain technology, making them
-                  accessible to anyone with a smartphone and internet connection.
-                </p>
+            <div className="bg-white rounded-lg shadow p-2 sm:p-3">
+              <div className="flex items-center">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <BanknotesIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+                </div>
+                <div className="ml-2">
+                  <p className="text-xs text-gray-500">Deposit</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900">{userStats.depositBalance} ETH</p>
+                </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Key Benefits</h3>
-              <ul className="space-y-3">
-                <li className="flex items-start">
-                  <span className="text-green-600 mr-2">+</span>
-                  <span>Low minimum deposits and loans</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-600 mr-2">+</span>
-                  <span>No bank account required</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-600 mr-2">+</span>
-                  <span>Build credit history on-chain</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-600 mr-2">+</span>
-                  <span>Community-based trust system</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-600 mr-2">+</span>
-                  <span>Transparent and fair interest rates</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Status Overview Footer */}
-      <div className="bg-gray-900 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            System Status
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-              <div className="text-3xl font-bold text-green-400">Live</div>
-              <div className="text-sm text-gray-300 mt-2">Smart Contract</div>
+            <div className="bg-white rounded-lg shadow p-2 sm:p-3">
+              <div className="flex items-center">
+                <div className="p-1.5 bg-yellow-100 rounded-lg">
+                  <ArrowTrendingUpIcon className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
+                </div>
+                <div className="ml-2">
+                  <p className="text-xs text-gray-500">Max Loan</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900">{userStats.maxLoanAmount} ETH</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-              <div className="text-3xl font-bold text-blue-400">Sepolia</div>
-              <div className="text-sm text-gray-300 mt-2">Network</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-              <div className="text-3xl font-bold text-yellow-400">Active</div>
-              <div className="text-sm text-gray-300 mt-2">Frontend</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-              <div className="text-3xl font-bold text-purple-400">Verified</div>
-              <div className="text-sm text-gray-300 mt-2">DApp</div>
+
+            <div className="bg-white rounded-lg shadow p-2 sm:p-3">
+              <div className="flex items-center">
+                <div className="p-1.5 bg-purple-100 rounded-lg">
+                  <UserCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
+                </div>
+                <div className="ml-2">
+                  <p className="text-xs text-gray-500">Active Loans</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900">{userStats.activeLoans}</p>
+                </div>
+              </div>
             </div>
           </div>
-          {!isConnected ? (
-            <button
-              onClick={() => connectWallet()}
-              className="bg-yellow-400 text-gray-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-xl"
-            >
-              Connect Wallet to Get Started
-            </button>
-          ) : (
-            <Link
-              href="/dashboard"
-              className="inline-block bg-yellow-400 text-gray-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-300 transition-all transform hover:scale-105"
-            >
-              Go to Dashboard
-            </Link>
-          )}
+        )}
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <Link
+            href="/lend"
+            className="bg-white rounded-lg shadow p-2 sm:p-3 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex flex-col items-center text-center gap-1">
+              <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-green-600" />
+              <h3 className="text-xs sm:text-sm font-medium text-gray-900 group-hover:text-green-600">
+                Lend
+              </h3>
+              <p className="text-xs text-gray-500">Deposit ETH</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/borrow"
+            className="bg-white rounded-lg shadow p-2 sm:p-3 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex flex-col items-center text-center gap-1">
+              <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-blue-600" />
+              <h3 className="text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600">
+                Borrow
+              </h3>
+              <p className="text-xs text-gray-500">Get loan</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/loans"
+            className="bg-white rounded-lg shadow p-2 sm:p-3 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex flex-col items-center text-center gap-1">
+              <ArrowUpTrayIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-yellow-600" />
+              <h3 className="text-xs sm:text-sm font-medium text-gray-900 group-hover:text-yellow-600">
+                Pay Loan
+              </h3>
+              <p className="text-xs text-gray-500">Repay</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/credit"
+            className="bg-white rounded-lg shadow p-2 sm:p-3 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex flex-col items-center text-center gap-1">
+              <ArrowTrendingUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-purple-600" />
+              <h3 className="text-xs sm:text-sm font-medium text-gray-900 group-hover:text-purple-600">
+                Credit
+              </h3>
+              <p className="text-xs text-gray-500">Details</p>
+            </div>
+          </Link>
         </div>
+
+        {/* System Overview */}
+        {systemStats && (
+          <div className="bg-white rounded-lg shadow p-2 sm:p-3">
+            <h2 className="text-sm font-medium text-gray-900 mb-2">System Overview</h2>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-center">
+                <div className="text-sm font-semibold text-green-600">{systemStats.totalBalance} ETH</div>
+                <div className="text-xs text-gray-500">Pool Balance</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-yellow-600">{systemStats.activeLoans}</div>
+                <div className="text-xs text-gray-500">Active Loans</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-blue-600">{systemStats.totalRepaid} ETH</div>
+                <div className="text-xs text-gray-500">Total Repaid</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Your Activity */}
+        {userStats && (
+          <div className="bg-white rounded-lg shadow p-2 sm:p-3">
+            <h2 className="text-sm font-medium text-gray-900 mb-2">Your Activity</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-center">
+                <div className="text-sm font-semibold text-blue-600">{userStats.totalBorrowed} ETH</div>
+                <div className="text-xs text-gray-500">Borrowed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-green-600">{userStats.totalRepaid} ETH</div>
+                <div className="text-xs text-gray-500">Repaid</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-green-600">{userStats.completedLoans}</div>
+                <div className="text-xs text-gray-500">Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-red-600">{userStats.defaultedLoans}</div>
+                <div className="text-xs text-gray-500">Defaulted</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

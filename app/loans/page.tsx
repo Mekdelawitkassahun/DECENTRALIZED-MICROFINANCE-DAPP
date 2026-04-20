@@ -23,7 +23,7 @@ interface Loan {
 
 export default function LoansPage() {
   const { account } = useWallet()
-  const { getUserLoans, getLoanDetails, repayLoan, isLoading } = useContract()
+  const { getUserLoans, getLoanDetails, repayLoan, approveLoan, isLoading } = useContract()
   const [loans, setLoans] = useState<Loan[]>([])
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null)
   const [repayAmount, setRepayAmount] = useState('')
@@ -35,16 +35,31 @@ export default function LoansPage() {
   }, [account])
 
   const loadUserLoans = async () => {
-    const loanIds = await getUserLoans()
-    // Load details for each loan
-    const loanDetails = await Promise.all(
-      loanIds.map(async (loanId) => {
-        const details = await getLoanDetails(loanId)
-        return details
-      })
-    )
-    
-    setLoans(loanDetails.filter(Boolean) as Loan[])
+    try {
+      const loanIds = await getUserLoans()
+      if (!loanIds || loanIds.length === 0) {
+        setLoans([])
+        return
+      }
+      
+      // Load details for each loan
+      const loanDetails = await Promise.all(
+        loanIds.map(async (loanId) => {
+          try {
+            const details = await getLoanDetails(loanId)
+            return details
+          } catch (error) {
+            console.error(`Error loading loan ${loanId}:`, error)
+            return null
+          }
+        })
+      )
+      
+      setLoans(loanDetails.filter(Boolean) as Loan[])
+    } catch (error) {
+      console.error('Error loading user loans:', error)
+      setLoans([])
+    }
   }
 
   const getStatusColor = (status: number) => {
@@ -67,7 +82,7 @@ export default function LoansPage() {
       case 3: return 'Completed'
       case 4: return 'Defaulted'
       case 5: return 'Cancelled'
-      default: return 'Unknown'
+      default: return `Unknown (${status})`
     }
   }
 
@@ -90,6 +105,11 @@ export default function LoansPage() {
     await repayLoan(loanId, repayAmount)
     setRepayAmount('')
     setSelectedLoan(null)
+    loadUserLoans()
+  }
+
+  const handleApprove = async (loanId: string) => {
+    await approveLoan(loanId)
     loadUserLoans()
   }
 
@@ -116,9 +136,9 @@ export default function LoansPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3 mb-8">
           <Link
-            href="/dashboard"
+            href="/"
             className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition-colors"
-            aria-label="Back to dashboard"
+            aria-label="Back to home"
           >
             <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
           </Link>
@@ -239,16 +259,40 @@ export default function LoansPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  {(loan.status === 1 || loan.status === 2) && (
-                    <div className="flex space-x-4">
+                  <div className="flex space-x-4">
+                    {loan.status === 0 && (
+                      <button
+                        onClick={() => handleApprove(loan.id)}
+                        disabled={isLoading}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLoading ? 'Approving...' : 'Approve Loan'}
+                      </button>
+                    )}
+                    {(loan.status === 1 || loan.status === 2) && (
                       <button
                         onClick={() => setSelectedLoan(loan)}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                       >
                         Make Repayment
                       </button>
-                    </div>
-                  )}
+                    )}
+                    {loan.status === 3 && (
+                      <div className="text-sm text-green-600 font-medium">
+                        Completed
+                      </div>
+                    )}
+                    {loan.status === 4 && (
+                      <div className="text-sm text-red-600 font-medium">
+                        Defaulted
+                      </div>
+                    )}
+                    {loan.status === 5 && (
+                      <div className="text-sm text-gray-600 font-medium">
+                        Cancelled
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

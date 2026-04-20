@@ -9,7 +9,6 @@ import { ArrowRightIcon, BanknotesIcon } from '@heroicons/react/24/outline'
 
 const navItems = [
   { href: '/', label: 'Home' },
-  { href: '/dashboard', label: 'Dashboard' },
   { href: '/lend', label: 'Lend' },
   { href: '/borrow', label: 'Borrow' },
   { href: '/loans', label: 'My Loans' },
@@ -128,10 +127,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <Link href="/credit" className="hover:text-emerald-700 transition-colors">
               Credit Score
-            </Link>
-            <span className="text-gray-400">•</span>
-            <Link href="/dashboard" className="hover:text-emerald-700 transition-colors">
-              Dashboard
             </Link>
           </div>
         </div>

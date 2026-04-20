@@ -27,7 +27,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false)
 
   useEffect(() => {
-    checkConnection()
+    // checkConnection() // Removed to prevent auto-connection
     setupEventListeners()
   }, [])
 
@@ -84,16 +84,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum)
       
-      if (forceSelect) {
-        // Force account selection dialog
-        await window.ethereum.request({
-          method: 'wallet_requestPermissions',
-          params: [{ eth_accounts: {} }],
-        })
-      } else {
-        // Request account access
-        await provider.send('eth_requestAccounts', [])
-      }
+      // Always force account selection dialog
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }],
+      })
       
       const signer = await provider.getSigner()
       const network = await provider.getNetwork()
