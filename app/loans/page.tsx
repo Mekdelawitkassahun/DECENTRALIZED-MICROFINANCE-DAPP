@@ -70,7 +70,7 @@ export default function LoansPage() {
       case 3: return 'bg-emerald-100 text-emerald-800' // Completed
       case 4: return 'bg-red-100 text-red-800' // Defaulted
       case 5: return 'bg-gray-100 text-gray-800' // Cancelled
-      default: return 'bg-gray-100 text-gray-800'
+      default: return status >= 0 && status < 3 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
     }
   }
 
@@ -82,7 +82,7 @@ export default function LoansPage() {
       case 3: return 'Completed'
       case 4: return 'Defaulted'
       case 5: return 'Cancelled'
-      default: return `Unknown (${status})`
+      default: return status >= 0 && status < 3 ? 'Active' : `Unknown (${status})`
     }
   }
 
@@ -94,7 +94,7 @@ export default function LoansPage() {
       case 3: return <CheckCircleIcon className="w-4 h-4" />
       case 4: return <XCircleIcon className="w-4 h-4" />
       case 5: return <XCircleIcon className="w-4 h-4" />
-      default: return <ClockIcon className="w-4 h-4" />
+      default: return status >= 0 && status < 3 ? <CreditCardIcon className="w-4 h-4" /> : <ClockIcon className="w-4 h-4" />
     }
   }
 
@@ -269,7 +269,7 @@ export default function LoansPage() {
                         {isLoading ? 'Approving...' : 'Approve Loan'}
                       </button>
                     )}
-                    {(loan.status === 1 || loan.status === 2) && (
+                    {((loan.status === 1 || loan.status === 2) || (loan.status >= 0 && loan.status < 3 && loan.status !== 0)) && (
                       <button
                         onClick={() => setSelectedLoan(loan)}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -291,6 +291,14 @@ export default function LoansPage() {
                       <div className="text-sm text-gray-600 font-medium">
                         Cancelled
                       </div>
+                    )}
+                    {(loan.status < 0 || loan.status > 5) && (
+                      <button
+                        onClick={() => setSelectedLoan(loan)}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        Make Repayment
+                      </button>
                     )}
                   </div>
                 </div>

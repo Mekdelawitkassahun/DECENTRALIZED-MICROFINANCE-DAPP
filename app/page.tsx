@@ -27,12 +27,18 @@ export default function HomePage() {
   }, [account, getUserStats, getSystemStats])
 
   const loadData = async () => {
-    const [user, system] = await Promise.all([
-      getUserStats(),
-      getSystemStats()
-    ])
-    setUserStats(user)
-    setSystemStats(system)
+    try {
+      const [user, system] = await Promise.all([
+        getUserStats(),
+        getSystemStats()
+      ])
+      setUserStats(user)
+      setSystemStats(system)
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+      setUserStats(null)
+      setSystemStats(null)
+    }
   }
 
   if (!account) {
