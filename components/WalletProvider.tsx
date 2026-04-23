@@ -36,10 +36,24 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           const signer = await provider.getSigner()
           const network = await provider.getNetwork()
           
-          if (Number(network.chainId) === 11155111) {
-            setAccount(signer.address)
+          const chainId = Number(network.chainId)
+          
+          // Always update state if we have accounts, regardless of chain
+          // The dapp will handle wrong network errors when making transactions
+          setAccount(signer.address)
+          setProvider(provider)
+          setSigner(signer)
+          setIsConnected(true)
+          
+          // If not on Sepolia, prompt to switch
+          if (chainId !== 11155111) {
+            toast.error('Please switch to Sepolia testnet to use this DApp')
+          }
+        } else {
+          // If no accounts found, ensure state is reset
+          if (window.ethereum.selectedAddress) {
+            setAccount(window.ethereum.selectedAddress)
             setProvider(provider)
-            setSigner(signer)
             setIsConnected(true)
           }
         }
@@ -58,7 +72,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setIsConnected(false)
         toast.success('Wallet disconnected')
       } else {
+        // Update account and reconnect signer on account change
         setAccount(accounts[0])
+        if (window.ethereum) {
+          const newProvider = new ethers.BrowserProvider(window.ethereum)
+          setProvider(newProvider)
+          newProvider.getSigner().then(newSigner => {
+            setSigner(newSigner)
+          })
+        }
       }
     }
 
@@ -73,7 +95,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // checkConnection() // Removed to prevent auto-connection
+    // Restore connection state on mount
+    checkConnection()
     setupEventListeners()
 
     return () => {
