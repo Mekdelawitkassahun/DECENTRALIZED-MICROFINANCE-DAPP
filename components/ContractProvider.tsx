@@ -19,12 +19,14 @@ const CONTRACT_ABI = [
   "function getSystemStats() external view returns (uint256 totalBalance, uint256 activeLoans, uint256 totalRepaid, uint256 totalUsers)",
   "function getUserLoans(address user) external view returns (uint256[])",
   "function getAvailableLiquidity() external view returns (uint256)",
-  "function getMaxLoanAmount(address user) external view returns (uint256)"
+  "function getMaxLoanAmount(address user) external view returns (uint256)",
+  "function owner() external view returns (address)"
 ]
 
 interface ContractContextType {
   contract: ethers.Contract | null
   isLoading: boolean
+  isOwner: boolean
   registerUser: () => Promise<void>
   depositFunds: (amount: string) => Promise<void>
   withdrawFunds: (amount: string) => Promise<void>
@@ -45,16 +47,29 @@ const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ""
 export function ContractProvider({ children }: { children: ReactNode }) {
   const [contract, setContract] = useState<ethers.Contract | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const { signer, isConnected } = useWallet()
+  const [isOwner, setIsOwner] = useState(false)
+  const { signer, isConnected, account } = useWallet()
 
   useEffect(() => {
+    const checkOwner = async (contractInstance: ethers.Contract) => {
+      try {
+        const contractOwner = await contractInstance.owner()
+        setIsOwner(contractOwner.toLowerCase() === account?.toLowerCase())
+      } catch (error) {
+        console.error('Error checking owner:', error)
+        setIsOwner(false)
+      }
+    }
+
     if (isConnected && signer && CONTRACT_ADDRESS) {
       const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
       setContract(contractInstance)
+      checkOwner(contractInstance)
     } else {
       setContract(null)
+      setIsOwner(false)
     }
-  }, [isConnected, signer, CONTRACT_ADDRESS])
+  }, [isConnected, signer, account])
 
   const registerUser = async () => {
     if (!contract) {
@@ -195,7 +210,8 @@ export function ContractProvider({ children }: { children: ReactNode }) {
         completedLoans: stats[4].toString(),
         defaultedLoans: stats[5].toString(),
         depositBalance: ethers.formatEther(stats[6]),
-        maxLoanAmount: ethers.formatEther(stats[7])
+        maxLoanAmount: ethers.formatEther(stats[7]),
+        isRegistered: stats[0] > 0 || stats[3] > 0 || stats[4] > 0 || stats[5] > 0 || stats[6] > 0 // Simple check if any stats exist
       }
     } catch (error: any) {
       console.error('Error getting user stats:', error)
@@ -267,6 +283,7 @@ export function ContractProvider({ children }: { children: ReactNode }) {
       value={{
         contract,
         isLoading,
+        isOwner,
         registerUser,
         depositFunds,
         withdrawFunds,

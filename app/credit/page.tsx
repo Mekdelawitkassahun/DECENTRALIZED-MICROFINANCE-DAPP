@@ -12,17 +12,17 @@ export default function CreditPage() {
   const [userStats, setUserStats] = useState<any>(null)
 
   useEffect(() => {
+    const loadUserStats = async () => {
+      const stats = await getUserStats()
+      if (stats) {
+        setUserStats(stats)
+      }
+    }
+
     if (account) {
       loadUserStats()
     }
-  }, [account])
-
-  const loadUserStats = async () => {
-    const stats = await getUserStats()
-    if (stats) {
-      setUserStats(stats)
-    }
-  }
+  }, [account, getUserStats])
 
   const getCreditTier = (score: number) => {
     if (score >= 800) return { tier: 'Excellent', color: 'text-emerald-600', bg: 'bg-emerald-100' }
@@ -104,9 +104,9 @@ export default function CreditPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3 mb-8">
           <Link
-            href="/dashboard"
+            href="/"
             className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition-colors"
-            aria-label="Back to dashboard"
+            aria-label="Back to home"
           >
             <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
           </Link>

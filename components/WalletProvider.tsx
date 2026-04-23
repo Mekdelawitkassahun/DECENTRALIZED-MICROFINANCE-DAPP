@@ -26,11 +26,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
 
-  useEffect(() => {
-    // checkConnection() // Removed to prevent auto-connection
-    setupEventListeners()
-  }, [])
-
   const checkConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
@@ -42,7 +37,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           const network = await provider.getNetwork()
           
           if (Number(network.chainId) === 11155111) {
-            setAccount(accounts[0].address)
+            setAccount(signer.address)
             setProvider(provider)
             setSigner(signer)
             setIsConnected(true)
@@ -54,24 +49,40 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const setupEventListeners = () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged)
-      window.ethereum.on('chainChanged', handleChainChanged)
+  useEffect(() => {
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts.length === 0) {
+        setAccount(null)
+        setProvider(null)
+        setSigner(null)
+        setIsConnected(false)
+        toast.success('Wallet disconnected')
+      } else {
+        setAccount(accounts[0])
+      }
     }
-  }
 
-  const handleAccountsChanged = (accounts: string[]) => {
-    if (accounts.length === 0) {
-      disconnectWallet()
-    } else {
-      setAccount(accounts[0])
+    const handleChainChanged = () => {
+      window.location.reload()
     }
-  }
 
-  const handleChainChanged = () => {
-    window.location.reload()
-  }
+    const setupEventListeners = () => {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        window.ethereum.on('accountsChanged', handleAccountsChanged)
+        window.ethereum.on('chainChanged', handleChainChanged)
+      }
+    }
+
+    // checkConnection() // Removed to prevent auto-connection
+    setupEventListeners()
+
+    return () => {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
+        window.ethereum.removeListener('chainChanged', handleChainChanged)
+      }
+    }
+  }, [])
 
   const connectWallet = async (forceSelect = false) => {
     if (typeof window === 'undefined' || !window.ethereum) {

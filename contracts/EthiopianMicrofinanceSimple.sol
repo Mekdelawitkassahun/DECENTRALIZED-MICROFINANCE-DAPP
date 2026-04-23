@@ -44,6 +44,7 @@ contract EthiopianMicrofinanceSimple {
     uint256 public totalActiveLoans;
     uint256 public totalRepaidAmount;
     uint256 public nextLoanId;
+    uint256 public totalUsers;
     bool public paused;
     
     // Constants
@@ -109,6 +110,7 @@ contract EthiopianMicrofinanceSimple {
             isRegistered: true,
             lastActivity: block.timestamp
         });
+        totalUsers += 1;
         emit UserRegistered(msg.sender, block.timestamp);
     }
     
@@ -128,6 +130,7 @@ contract EthiopianMicrofinanceSimple {
             isRegistered: true,
             lastActivity: block.timestamp
         });
+        totalUsers += 1;
         
         emit UserRegistered(msg.sender, block.timestamp);
     }
@@ -433,13 +436,13 @@ contract EthiopianMicrofinanceSimple {
         uint256 totalBalance,
         uint256 activeLoans,
         uint256 totalRepaid,
-        uint256 totalUsers
+        uint256 _totalUsers
     ) {
         return (
             totalPoolBalance,
             totalActiveLoans,
             totalRepaidAmount,
-            0 // TODO: Add user counter
+            totalUsers
         );
     }
     

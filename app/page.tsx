@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useWallet } from '@/components/WalletProvider'
 import { useContract } from '@/components/ContractProvider'
 import Link from 'next/link'
@@ -16,17 +16,12 @@ import {
 
 export default function HomePage() {
   const { account, connectWallet } = useWallet()
-  const { getUserStats, getSystemStats, isLoading } = useContract()
+  const { getUserStats, getSystemStats, registerUser, isLoading: contractLoading } = useContract()
   const [userStats, setUserStats] = useState<any>(null)
   const [systemStats, setSystemStats] = useState<any>(null)
+  const [isRegistering, setIsRegistering] = useState(false)
 
-  useEffect(() => {
-    if (account) {
-      loadData()
-    }
-  }, [account, getUserStats, getSystemStats])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [user, system] = await Promise.all([
         getUserStats(),
@@ -39,6 +34,22 @@ export default function HomePage() {
       setUserStats(null)
       setSystemStats(null)
     }
+  }, [getUserStats, getSystemStats])
+
+  useEffect(() => {
+    if (account) {
+      loadData()
+    }
+  }, [account, loadData])
+
+  const handleRegister = async () => {
+    setIsRegistering(true)
+    await registerUser()
+    
+    // Refresh data after registration
+    await loadData()
+    
+    setIsRegistering(false)
   }
 
   if (!account) {
@@ -51,6 +62,33 @@ export default function HomePage() {
           >
             Connect Wallet
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (userStats && !userStats.isRegistered && userStats.creditScore === "0") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-emerald-100">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <UserCircleIcon className="w-12 h-12 text-emerald-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Welcome to Ethiopian Microfinance</h1>
+          <p className="text-gray-600 mb-8">
+            You are connected but not yet registered in our decentralized system. 
+            Register now to start lending, borrowing, and building your credit score.
+          </p>
+          <button
+            onClick={handleRegister}
+            disabled={isRegistering || contractLoading}
+            className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 disabled:bg-gray-400 transition-all shadow-lg hover:shadow-emerald-200"
+          >
+            {isRegistering ? 'Registering...' : 'Register Now'}
+          </button>
+          <p className="mt-4 text-xs text-gray-400">
+            Registration requires a small gas fee on the Sepolia network.
+          </p>
         </div>
       </div>
     )

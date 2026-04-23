@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useWallet } from '@/components/WalletProvider'
 import { useContract } from '@/components/ContractProvider'
 import Link from 'next/link'
@@ -23,18 +23,12 @@ interface Loan {
 
 export default function LoansPage() {
   const { account } = useWallet()
-  const { getUserLoans, getLoanDetails, repayLoan, approveLoan, isLoading } = useContract()
+  const { getUserLoans, getLoanDetails, repayLoan, approveLoan, isLoading, isOwner } = useContract()
   const [loans, setLoans] = useState<Loan[]>([])
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null)
   const [repayAmount, setRepayAmount] = useState('')
 
-  useEffect(() => {
-    if (account) {
-      loadUserLoans()
-    }
-  }, [account])
-
-  const loadUserLoans = async () => {
+  const loadUserLoans = useCallback(async () => {
     try {
       const loanIds = await getUserLoans()
       if (!loanIds || loanIds.length === 0) {
@@ -60,7 +54,13 @@ export default function LoansPage() {
       console.error('Error loading user loans:', error)
       setLoans([])
     }
-  }
+  }, [getUserLoans, getLoanDetails])
+
+  useEffect(() => {
+    if (account) {
+      loadUserLoans()
+    }
+  }, [account, loadUserLoans])
 
   const getStatusColor = (status: number) => {
     switch (status) {
@@ -260,7 +260,7 @@ export default function LoansPage() {
 
                   {/* Action Buttons */}
                   <div className="flex space-x-4">
-                    {loan.status === 0 && (
+                    {loan.status === 0 && isOwner && (
                       <button
                         onClick={() => handleApprove(loan.id)}
                         disabled={isLoading}
@@ -268,6 +268,11 @@ export default function LoansPage() {
                       >
                         {isLoading ? 'Approving...' : 'Approve Loan'}
                       </button>
+                    )}
+                    {loan.status === 0 && !isOwner && (
+                      <div className="text-sm text-yellow-600 font-medium">
+                        Waiting for Approval
+                      </div>
                     )}
                     {((loan.status === 1 || loan.status === 2) || (loan.status >= 0 && loan.status < 3 && loan.status !== 0)) && (
                       <button
