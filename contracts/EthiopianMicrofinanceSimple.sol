@@ -170,7 +170,7 @@ contract EthiopianMicrofinanceSimple {
     }
     
     /**
-     * @dev Request a loan
+     * @dev Request and automatically receive a loan
      */
     function requestLoan(uint256 amount, uint256 duration, string memory purpose) external whenNotPaused nonReentrant returns (uint256) {
         require(users[msg.sender].isRegistered, "User not registered");
@@ -184,30 +184,45 @@ contract EthiopianMicrofinanceSimple {
         uint256 interestAmount = (amount * BASE_INTEREST_RATE * duration) / (365 days * 10000);
         uint256 totalOwed = amount + interestAmount;
         
+        // Create and automatically activate the loan
         loans[loanId] = Loan({
             id: loanId,
             borrower: msg.sender,
             amount: amount,
             interestRate: BASE_INTEREST_RATE,
             duration: duration,
-            startTime: 0,
-            endTime: 0,
+            startTime: block.timestamp,
+            endTime: block.timestamp + duration,
             amountRepaid: 0,
             totalOwed: totalOwed,
-            status: LoanStatus.Requested,
+            status: LoanStatus.Active,
             purpose: purpose,
             created: block.timestamp
         });
         
         userLoans[msg.sender].push(loanId);
+        
+        // Update user and system state
+        users[msg.sender].totalBorrowed += amount;
+        users[msg.sender].activeLoans += 1;
         users[msg.sender].lastActivity = block.timestamp;
         
+        totalActiveLoans += 1;
+        totalPoolBalance -= amount;
+        
+        // Transfer funds immediately
+        payable(msg.sender).transfer(amount);
+        
         emit LoanRequested(loanId, msg.sender, amount, purpose);
+        emit LoanApproved(loanId, amount);
+        emit LoanActive(loanId, block.timestamp);
+        emit PoolStatsUpdated(totalPoolBalance, totalActiveLoans, block.timestamp);
+        
         return loanId;
     }
     
     /**
-     * @dev Approve loan
+     * @dev Approve loan (kept for backward compatibility but effectively unused)
      */
     function approveLoan(uint256 loanId) external onlyOwner nonReentrant {
         require(loans[loanId].status == LoanStatus.Requested, "Invalid loan status");
@@ -237,7 +252,12 @@ contract EthiopianMicrofinanceSimple {
      * @dev Repay loan
      */
     function repayLoan(uint256 loanId) external payable whenNotPaused nonReentrant {
-        require(loans[loanId].status == LoanStatus.Active || loans[loanId].status == LoanStatus.Repaying, "Invalid loan status");
+        require(
+            loans[loanId].status == LoanStatus.Active || 
+            loans[loanId].status == LoanStatus.Repaying ||
+            loans[loanId].status == LoanStatus.Requested, 
+            "Invalid loan status"
+        );
         require(loans[loanId].borrower == msg.sender, "Not loan borrower");
         require(msg.value > 0, "No payment amount");
         

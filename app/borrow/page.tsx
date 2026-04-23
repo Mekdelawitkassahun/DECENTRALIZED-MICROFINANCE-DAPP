@@ -49,24 +49,24 @@ export default function BorrowPage() {
             <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Request Loan</h1>
-            <p className="text-sm text-gray-500">Ask for a micro-loan backed by on-chain credit scoring</p>
-          </div>
-        </div>
-
-        {/* Info Card */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <div className="flex">
-            <InformationCircleIcon className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0" />
-            <div>
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">How Loans Work</h3>
-              <p className="text-blue-800">
-                Request micro-loans for your business or personal needs. Build your credit score through timely repayments.
-                Loans are funded by the community pool and automatically managed by smart contracts.
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900">Instant Loan</h1>
+              <p className="text-sm text-gray-500">Get a micro-loan immediately based on your credit score</p>
             </div>
           </div>
-        </div>
+  
+          {/* Info Card */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <div className="flex">
+              <InformationCircleIcon className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">How Instant Loans Work</h3>
+                <p className="text-blue-800">
+                  Request micro-loans and receive funds directly in your wallet. Build your credit score through timely repayments.
+                  Loans are funded by the community pool and automatically approved by smart contracts.
+                </p>
+              </div>
+            </div>
+          </div>
 
         {/* Loan Request Form */}
         <div className="bg-white rounded-lg shadow mb-8">
@@ -164,7 +164,7 @@ export default function BorrowPage() {
                 disabled={isLoading || !loanAmount || parseFloat(loanAmount) <= 0 || !loanPurpose}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                {isLoading ? 'Processing...' : 'Request Loan'}
+                {isLoading ? 'Processing...' : 'Get Instant Loan'}
               </button>
             </form>
           </div>

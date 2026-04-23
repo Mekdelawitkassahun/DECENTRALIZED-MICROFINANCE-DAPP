@@ -185,7 +185,7 @@ export default function HomePage() {
               <h3 className="text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600">
                 Borrow
               </h3>
-              <p className="text-xs text-gray-500">Get loan</p>
+              <p className="text-xs text-gray-500">Instant Loan</p>
             </div>
           </Link>
 

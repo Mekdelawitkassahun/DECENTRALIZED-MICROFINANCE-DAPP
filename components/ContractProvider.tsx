@@ -164,7 +164,8 @@ export function ContractProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true)
     try {
-      const tx = await contract.approveLoan(loanId)
+      const loanIdBigInt = BigInt(loanId)
+      const tx = await contract.approveLoan(loanIdBigInt)
       await tx.wait()
       toast.success('Loan approved successfully!')
     } catch (error: any) {
@@ -184,7 +185,8 @@ export function ContractProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     try {
       const ethAmount = ethers.parseEther(amount)
-      const tx = await contract.repayLoan(loanId, { value: ethAmount })
+      const loanIdBigInt = BigInt(loanId)
+      const tx = await contract.repayLoan(loanIdBigInt, { value: ethAmount })
       await tx.wait()
       toast.success(`Successfully repaid ${amount} ETH!`)
     } catch (error: any) {
@@ -260,6 +262,7 @@ export function ContractProvider({ children }: { children: ReactNode }) {
     try {
       const details = await contract.getLoanDetails(loanId)
       return {
+        id: loanId,
         borrower: details[0],
         amount: ethers.formatEther(details[1]),
         interestRate: details[2].toString(),
@@ -268,7 +271,7 @@ export function ContractProvider({ children }: { children: ReactNode }) {
         endTime: details[5].toString(),
         amountRepaid: ethers.formatEther(details[6]),
         totalOwed: ethers.formatEther(details[7]),
-        status: details[8],
+        status: Number(details[8]),
         purpose: details[9],
         created: details[10].toString()
       }

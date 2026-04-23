@@ -64,37 +64,37 @@ export default function LoansPage() {
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 0: return 'bg-yellow-100 text-yellow-800' // Requested
+      case 0: return 'bg-blue-100 text-blue-800' // Active (merged Requested into Active)
       case 1: return 'bg-green-100 text-green-800' // Active
       case 2: return 'bg-blue-100 text-blue-800' // Repaying
       case 3: return 'bg-emerald-100 text-emerald-800' // Completed
       case 4: return 'bg-red-100 text-red-800' // Defaulted
       case 5: return 'bg-gray-100 text-gray-800' // Cancelled
-      default: return status >= 0 && status < 3 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+      default: return 'bg-blue-100 text-blue-800'
     }
   }
 
   const getStatusText = (status: number) => {
     switch (status) {
-      case 0: return 'Requested'
+      case 0: return 'Active'
       case 1: return 'Active'
       case 2: return 'Repaying'
       case 3: return 'Completed'
       case 4: return 'Defaulted'
       case 5: return 'Cancelled'
-      default: return status >= 0 && status < 3 ? 'Active' : `Unknown (${status})`
+      default: return 'Active'
     }
   }
 
   const getStatusIcon = (status: number) => {
     switch (status) {
-      case 0: return <ClockIcon className="w-4 h-4" />
+      case 0: return <CreditCardIcon className="w-4 h-4" />
       case 1: return <CreditCardIcon className="w-4 h-4" />
       case 2: return <CreditCardIcon className="w-4 h-4" />
       case 3: return <CheckCircleIcon className="w-4 h-4" />
       case 4: return <XCircleIcon className="w-4 h-4" />
       case 5: return <XCircleIcon className="w-4 h-4" />
-      default: return status >= 0 && status < 3 ? <CreditCardIcon className="w-4 h-4" /> : <ClockIcon className="w-4 h-4" />
+      default: return <CreditCardIcon className="w-4 h-4" />
     }
   }
 
@@ -260,21 +260,7 @@ export default function LoansPage() {
 
                   {/* Action Buttons */}
                   <div className="flex space-x-4">
-                    {loan.status === 0 && isOwner && (
-                      <button
-                        onClick={() => handleApprove(loan.id)}
-                        disabled={isLoading}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {isLoading ? 'Approving...' : 'Approve Loan'}
-                      </button>
-                    )}
-                    {loan.status === 0 && !isOwner && (
-                      <div className="text-sm text-yellow-600 font-medium">
-                        Waiting for Approval
-                      </div>
-                    )}
-                    {((loan.status === 1 || loan.status === 2) || (loan.status >= 0 && loan.status < 3 && loan.status !== 0)) && (
+                    {(loan.status === 0 || loan.status === 1 || loan.status === 2) && (
                       <button
                         onClick={() => setSelectedLoan(loan)}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -296,14 +282,6 @@ export default function LoansPage() {
                       <div className="text-sm text-gray-600 font-medium">
                         Cancelled
                       </div>
-                    )}
-                    {(loan.status < 0 || loan.status > 5) && (
-                      <button
-                        onClick={() => setSelectedLoan(loan)}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Make Repayment
-                      </button>
                     )}
                   </div>
                 </div>
