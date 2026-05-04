@@ -1,0 +1,12 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0x2646C40E21f8ef7637e3cD7AB6e33730Fba3C1A5",
+  "contracts": {
+    "SimpleEqub": "0x1234567890123456789012345678901234567890",
+    "SimpleIddir": "0x2345678901234567890123456789012345678901",
+    "Reputation": "0x3456789012345678901234567890123456789012"
+  },
+  "deployedAt": "2026-05-04T06:53:36.976Z",
+  "note": "Mock deployment for demonstration - replace with real deployed addresses"
+}

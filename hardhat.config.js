@@ -9,33 +9,28 @@ module.exports = {
       optimizer: {
         enabled: true,
         runs: 200
-      },
-      viaIR: true
+      }
     }
   },
   networks: {
     hardhat: {
       chainId: 1337
     },
-    localhost: {
-      url: "http://127.0.0.1:8545",
-      chainId: 1337
-    },
     sepolia: {
-      url: process.env.SEPOLIA_URL || "https://sepolia.drpc.org",
-      accounts: process.env.MNEMONIC ? { mnemonic: process.env.MNEMONIC } : (process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []),
+      url: process.env.SEPOLIA_RPC_URL || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
+      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.length === 66 ? [process.env.PRIVATE_KEY] : [],
       chainId: 11155111,
-      gasPrice: 20000000000, // 20 gwei
-      gas: 6000000
+      gas: 6000000,
+      gasPrice: 20000000000
     }
   },
   etherscan: {
-    apiKey: {
-      sepolia: process.env.ETHERSCAN_API_KEY
-    }
+    apiKey: process.env.ETHERSCAN_API_KEY
   },
-  gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
-    currency: "USD"
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
   }
 };
