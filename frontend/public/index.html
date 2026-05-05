@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="description" content="Ensirat - Blockchain Equb & Iddir for Ethiopians. Complete microfinance DApp on Ethereum Sepolia testnet." />
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ensirat.eth/" />
+  <meta property="og:title" content="Ensirat - Blockchain Microfinance for Ethiopians" />
+  <meta property="og:description" content="Traditional Equb and Iddir groups on the blockchain. Secure, transparent, and community-driven." />
+  <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://ensirat.eth/" />
+  <meta property="twitter:title" content="Ensirat - Blockchain Microfinance for Ethiopians" />
+  <meta property="twitter:description" content="Traditional Equb and Iddir groups on the blockchain. Secure, transparent, and community-driven." />
+  <meta property="twitter:image" content="%PUBLIC_URL%/og-image.png" />
+  
+  <title>Ensirat - Blockchain Equb & Iddir for Ethiopians</title>
+  
+  <!-- Preconnect to improve performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Font Awesome for icons (optional) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+  
+  <!-- WalletConnect and other web3 libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  
+  <!-- MetaMask detection and prompt -->
+  <script>
+    // Check if MetaMask is installed
+    if (typeof window.ethereum === 'undefined') {
+      console.log('MetaMask is not installed. Please install MetaMask to use this application.');
+      // You could show a user-friendly message here
+    }
+    
+    // Auto-connect if previously connected
+    window.addEventListener('load', function() {
+      if (typeof window.ethereum !== 'undefined') {
+        // Check if user was previously connected
+        const isConnected = localStorage.getItem('walletConnected');
+        if (isConnected === 'true') {
+          // Attempt to reconnect silently
+          window.ethereum.request({ method: 'eth_accounts' })
+            .then(accounts => {
+              if (accounts.length > 0) {
+                console.log('Reconnected to wallet:', accounts[0]);
+              }
+            })
+            .catch(error => {
+              console.error('Failed to reconnect:', error);
+            });
+        }
+      }
+    });
+  </script>
+</body>
+</html>
