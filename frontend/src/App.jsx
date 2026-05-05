@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import Web3Modal from 'web3modal';
+import WalletConnectProvider from '@walletconnect/web3-provider';
 import Home from './pages/Home';
 import CreateGroup from './pages/CreateGroup';
 import MyGroups from './pages/MyGroups';
@@ -8,15 +10,30 @@ import en from './locales/en.json';
 import am from './locales/am.json';
 import contractAddresses from './contracts.json';
 
-const { SimpleEqub, SimpleIddir, Reputation } = contractAddresses.contracts;
 const TARGET_CHAIN_ID = contractAddresses.chainId;
 const LOCALHOST_CHAIN_ID = '0x7a69'; // 31337 in hex
 const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 in hex
 
+const web3Modal = new Web3Modal({
+  network: TARGET_CHAIN_ID === 31337 ? 'localhost' : 'sepolia',
+  cacheProvider: false,
+  providerOptions: {
+    walletconnect: {
+      package: WalletConnectProvider,
+      options: {
+        rpc: {
+          31337: 'http://127.0.0.1:8545',
+          11155111: 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY'
+        }
+      }
+    }
+  }
+});
+
 function App() {
   const [account, setAccount] = useState(null);
-  const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
+  const [web3Provider, setWeb3Provider] = useState(null);
   const [currentView, setCurrentView] = useState('home');
   const [language, setLanguage] = useState('en');
   const [translations, setTranslations] = useState(en);
@@ -25,64 +42,73 @@ function App() {
     setTranslations(language === 'en' ? en : am);
   }, [language]);
 
-  const connectWallet = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const address = await signer.getAddress();
-        
-        // Check if connected to target network
-        const network = await provider.getNetwork();
-        if (network.chainId !== TARGET_CHAIN_ID) {
-          try {
-            const chainIdHex = TARGET_CHAIN_ID === 31337 ? LOCALHOST_CHAIN_ID : SEPOLIA_CHAIN_ID;
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: chainIdHex }],
-            });
-          } catch (switchError) {
-            // This error code indicates that the chain has not been added to MetaMask
-            if (switchError.code === 4902) {
-              const chainIdHex = TARGET_CHAIN_ID === 31337 ? LOCALHOST_CHAIN_ID : SEPOLIA_CHAIN_ID;
-              const chainName = TARGET_CHAIN_ID === 31337 ? 'Localhost' : 'Sepolia Testnet';
-              const rpcUrl = TARGET_CHAIN_ID === 31337 ? 'http://127.0.0.1:8545' : 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY';
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [
-                  {
-                    chainId: chainIdHex,
-                    chainName: chainName,
-                    rpcUrls: [rpcUrl],
-                    nativeCurrency: {
-                      name: 'ETH',
-                      symbol: 'ETH',
-                      decimals: 18,
-                    },
-                  },
-                ],
-              });
-            }
-          }
-        }
-        
-        setProvider(provider);
-        setSigner(signer);
-        setAccount(address);
-      } catch (error) {
-        console.error('Error connecting wallet:', error);
-        alert(translations.walletError);
+  const switchNetwork = async (provider) => {
+    try {
+      const chainIdHex = TARGET_CHAIN_ID === 31337 ? LOCALHOST_CHAIN_ID : SEPOLIA_CHAIN_ID;
+      await provider.send('wallet_switchEthereumChain', [{ chainId: chainIdHex }]);
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        const chainIdHex = TARGET_CHAIN_ID === 31337 ? LOCALHOST_CHAIN_ID : SEPOLIA_CHAIN_ID;
+        const chainName = TARGET_CHAIN_ID === 31337 ? 'Localhost' : 'Sepolia Testnet';
+        const rpcUrl = TARGET_CHAIN_ID === 31337 ? 'http://127.0.0.1:8545' : 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY';
+        await provider.send('wallet_addEthereumChain', [
+          {
+            chainId: chainIdHex,
+            chainName: chainName,
+            rpcUrls: [rpcUrl],
+            nativeCurrency: {
+              name: 'ETH',
+              symbol: 'ETH',
+              decimals: 18,
+            },
+          },
+        ]);
       }
-    } else {
-      alert(translations.installMetaMask);
     }
   };
 
-  const disconnectWallet = () => {
+  const connectWallet = async () => {
+    try {
+      const instance = await web3Modal.connect();
+      const provider = new ethers.providers.Web3Provider(instance);
+      const network = await provider.getNetwork();
+      
+      if (network.chainId !== TARGET_CHAIN_ID) {
+        await switchNetwork(instance);
+      }
+      
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      
+      setWeb3Provider(instance);
+      setSigner(signer);
+      setAccount(address);
+
+      instance.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          setAccount(accounts[0]);
+        }
+      });
+
+      instance.on('chainChanged', () => {
+        window.location.reload();
+      });
+
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+    }
+  };
+
+  const disconnectWallet = async () => {
+    if (web3Provider && web3Provider.close) {
+      await web3Provider.close();
+    }
+    web3Modal.clearCachedProvider();
     setAccount(null);
-    setProvider(null);
     setSigner(null);
+    setWeb3Provider(null);
   };
 
   const renderView = () => {

@@ -28,12 +28,6 @@ function Home({ signer, account, translations, setCurrentView }) {
   const [reputationScore, setReputationScore] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (signer && account) {
-      loadData();
-    }
-  }, [signer, account, loadData]);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -119,6 +113,12 @@ function Home({ signer, account, translations, setCurrentView }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (signer && account) {
+      loadData();
+    }
+  }, [signer, account]);
 
   const getReputationColor = (score) => {
     if (score >= 90) return 'text-green-600';

@@ -20,15 +20,8 @@ function Profile({ signer, account, translations, setCurrentView }) {
     reputationScore: 0
   });
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [daysSinceLastPayment, setDaysSinceLastPayment] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (signer && account) {
-      loadProfileData();
-    }
-  }, [signer, account, loadProfileData]);
 
   const loadProfileData = async () => {
     try {
@@ -60,10 +53,6 @@ function Profile({ signer, account, translations, setCurrentView }) {
       }));
       setPaymentHistory(formattedHistory.reverse()); // Most recent first
       
-      // Get days since last payment
-      const days = await reputationContract.getDaysSinceLastPayment(account);
-      setDaysSinceLastPayment(days.toNumber());
-      
     } catch (error) {
       console.error('Error loading profile data:', error);
       setError(translations.errorLoadingProfile);
@@ -71,6 +60,12 @@ function Profile({ signer, account, translations, setCurrentView }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (signer && account) {
+      loadProfileData();
+    }
+  }, [signer, account]);
 
   const getReputationColor = (score) => {
     if (score >= 90) return 'text-green-600';

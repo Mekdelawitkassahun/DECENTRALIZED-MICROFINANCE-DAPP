@@ -26,17 +26,10 @@ function MyGroups({ signer, account, translations, setCurrentView }) {
   const [activeTab, setActiveTab] = useState('equb');
   const [equbGroups, setEqubGroups] = useState([]);
   const [iddirGroups, setIddirGroups] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  useEffect(() => {
-    if (signer && account) {
-      loadGroups();
-    }
-  }, [signer, account, loadGroups]);
 
   const loadGroups = async () => {
     try {
@@ -104,6 +97,12 @@ function MyGroups({ signer, account, translations, setCurrentView }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (signer && account) {
+      loadGroups();
+    }
+  }, [signer, account, activeTab]);
 
   const payEqubFee = async (groupId, fee) => {
     try {
